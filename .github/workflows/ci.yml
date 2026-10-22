@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request: {}
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, ubuntu-22.04]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@v5.2.2
+        with:
+          version: 2026.10.17
+          cache: true
+
+      - name: Install dependencies
+        run: mise run install
+
+      - name: Run the CLI
+        run: bun src/index.ts --help
+
+      - name: Run canonical checks
+        run: mise run check

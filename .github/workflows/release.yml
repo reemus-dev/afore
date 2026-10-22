@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  release:
+    needs: verify
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      # Release jobs never restore caches, which lower-trust workflows can write
+      - uses: jdx/mise-action@v5.2.2
+        with:
+          version: 2026.10.17
+          cache: false
+
+      - name: Check the tag matches package.json
+        run: |
+          version="$(jq -r .version package.json)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+
+      # npm authenticates through OIDC and adds provenance on its own
+      - name: Publish to npm
+        run: npm publish
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
