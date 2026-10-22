@@ -160,7 +160,10 @@ thread instead of stopping at the last compaction.
 
 - `afore` is read-only. It never writes to the Claude Code config directory.
 - Everything runs locally, except `tokens`. It sends its input to Anthropic's
-  token-counting API and needs `ANTHROPIC_API_KEY`.
+  token-counting API and needs `AFORE_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY`,
+  in that order. Claude Code can use `ANTHROPIC_API_KEY` in place of your
+  subscription login, so export `AFORE_ANTHROPIC_API_KEY` to make the key
+  available in every shell.
 
 ## Development
 

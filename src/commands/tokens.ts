@@ -47,10 +47,15 @@ export const tokensCommand = defineCommand({
         return;
       }
 
-      if (!process.env.ANTHROPIC_API_KEY) {
-        throw new CliFailure("Set ANTHROPIC_API_KEY to count tokens.");
+      const apiKey =
+        process.env.AFORE_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        throw new CliFailure(
+          "Set AFORE_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY to count tokens.",
+        );
       }
-      const {input_tokens} = await new Anthropic().messages.countTokens({
+      const client = new Anthropic({apiKey});
+      const {input_tokens} = await client.messages.countTokens({
         model: resolveModel(args.model),
         messages: [{role: "user", content}],
       });

@@ -29,7 +29,8 @@ Read `README.md` for the user contract.
   compaction.
 - `#N` refs number every event, extras included, so a ref holds with or without
   `--extra`.
-- Only `tokens` uses the network. It requires `ANTHROPIC_API_KEY`.
+- Only `tokens` uses the network. It requires `AFORE_ANTHROPIC_API_KEY` or, as a
+  fallback, `ANTHROPIC_API_KEY`.
 
 ## Development
 
