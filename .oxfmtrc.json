@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "bracketSpacing": false,
+  "bracketSameLine": true,
+  "proseWrap": "always",
+  "jsdoc": true,
+  "sortImports": {
+    "newlinesBetween": false,
+    "customGroups": [
+      {
+        "groupName": "scoped",
+        "elementNamePattern": ["@*/**"],
+        "selector": "external"
+      }
+    ],
+    "groups": [
+      "side_effect",
+      "builtin",
+      "external",
+      "scoped",
+      "internal",
+      ["parent", "sibling", "index"],
+      "unknown"
+    ]
+  }
+}

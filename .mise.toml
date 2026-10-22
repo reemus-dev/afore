@@ -1,0 +1,41 @@
+[env]
+_.path = ["{{config_root}}/node_modules/.bin"]
+
+[tools]
+bun = "1.4.3"
+# oxfmt, oxlint and tsc start through Node shebangs
+node = "26.8.1"
+
+# ── Setup ───────────────────────────────────────────────────────────────────
+
+[tasks.install]
+description = "Install the locked dependencies into node_modules"
+run = "bun install --frozen-lockfile"
+
+# ── Checks ──────────────────────────────────────────────────────────────────
+
+[tasks.check]
+description = "Typecheck, lint, and check formatting without modifying files"
+depends = ["typecheck", "lint", "format:check"]
+
+[tasks.typecheck]
+description = "Typecheck the CLI"
+run = "tsc -p tsconfig.json"
+
+[tasks.lint]
+description = "Lint the CLI without modifying files"
+run = "oxlint"
+
+[tasks."format:check"]
+description = "Check formatting of repository files without modifying them"
+run = "oxfmt --check"
+
+# ── Fixes ───────────────────────────────────────────────────────────────────
+
+[tasks.fix]
+description = "Apply oxlint's safe fixes, then format repository files"
+run = ["oxlint --fix", { task = "format" }]
+
+[tasks.format]
+description = "Format repository files"
+run = "oxfmt"

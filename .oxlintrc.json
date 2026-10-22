@@ -1,0 +1,90 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  // Errors are definitely wrong. Warnings are stricter checks. Both fail lint.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "pedantic": "warn"
+  },
+  "options": {
+    "typeAware": true,
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    // Most casts rest on an invariant, such as the shape of our own JSON.
+    "typescript/no-unsafe-type-assertion": "off",
+    // Return types already say when a function may return nothing.
+    "typescript/consistent-return": "off",
+    // Search loads one transcript at a time, so memory stays bounded by the
+    // largest session rather than the sum of all of them.
+    "no-await-in-loop": "off",
+    // Its fix mutates in place.
+    "oxc/no-map-spread": "off",
+    // Would require readonly on every parameter, library types included.
+    "typescript/prefer-readonly-parameter-types": "off",
+    "require-unicode-regexp": "off",
+    "max-classes-per-file": "off",
+    // Flags the `new Promise((resolve) => setTimeout(resolve, ms))` idiom.
+    "no-promise-executor-return": "off",
+    // TypeScript checks callback signatures, so passing a named function is safe.
+    "unicorn/no-array-callback-reference": "off",
+
+    "typescript/no-confusing-void-expression": [
+      "warn",
+      {"ignoreArrowShorthand": true}
+    ],
+    // An empty string counts as absent where `||` picks a fallback.
+    "typescript/prefer-nullish-coalescing": [
+      "warn",
+      {"ignorePrimitives": {"string": true}}
+    ],
+    "typescript/strict-boolean-expressions": [
+      "warn",
+      {"allowNullableBoolean": true, "allowNullableString": true}
+    ],
+    "max-lines": [
+      "warn",
+      {"max": 500, "skipBlankLines": true, "skipComments": true}
+    ],
+    "max-lines-per-function": [
+      "warn",
+      {"max": 150, "skipBlankLines": true, "skipComments": true}
+    ],
+    "complexity": "warn",
+
+    // Rules from the recommended configs of eslint, typescript-eslint (type
+    // checked) and import that oxlint files under style or restriction.
+    "no-empty": "error",
+    "no-regex-spaces": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "import/no-duplicates": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-require-imports": "error",
+
+    // House rules from the style and restriction categories.
+    "import/no-default-export": "error",
+    "no-nested-ternary": "error",
+    "no-param-reassign": "error",
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "unicorn/error-message": "error",
+    "unicorn/filename-case": ["error", {"case": "kebabCase"}],
+    "unicorn/prefer-node-protocol": "error",
+    "unicorn/throw-new-error": "error",
+
+    "no-unused-vars": ["error", {"ignoreRestSiblings": true}],
+    "import/no-cycle": "error",
+    // oxfmt orders the imports. This orders the names inside the braces.
+    "sort-imports": [
+      "error",
+      {"ignoreCase": true, "ignoreDeclarationSort": true}
+    ]
+  }
+}

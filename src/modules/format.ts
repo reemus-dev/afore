@@ -1,0 +1,234 @@
+import {homedir} from "node:os";
+import type {MessageEvent, SessionEvent} from "./events.js";
+
+// ── Values ────────────────────────────────────────────────────────────
+
+export function shortenPath(value: string): string {
+  const home = homedir();
+  return value === home || value.startsWith(`${home}/`)
+    ? `~${value.slice(home.length)}`
+    : value;
+}
+
+export function formatSize(bytes: number | null): string {
+  if (bytes === null) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatDate(timestamp: string | null): string {
+  return timestamp?.slice(0, 10) ?? "-";
+}
+
+export function formatDateTime(timestamp: string | null): string {
+  return timestamp?.slice(0, 16).replace("T", " ") ?? "-";
+}
+
+/** Truncate to a terminal display width, appending "…" when cut */
+function truncateToWidth(value: string, width: number, pad = false): string {
+  let result = value;
+  if (Bun.stringWidth(value) > width) {
+    result = "";
+    let used = 0;
+    for (const char of value) {
+      const charWidth = Bun.stringWidth(char);
+      if (used + charWidth > width - 1) break;
+      result += char;
+      used += charWidth;
+    }
+    result += width > 0 ? "…" : "";
+  }
+  return pad
+    ? result.padEnd(result.length + width - Bun.stringWidth(result))
+    : result;
+}
+
+export function formatPreview(content: string, maximumWidth = 80): string {
+  return truncateToWidth(content.replaceAll(/\s+/g, " ").trim(), maximumWidth);
+}
+
+// ── Tables ────────────────────────────────────────────────────────────
+
+export function outputWidth(): number {
+  if (process.stdout.columns > 0) return process.stdout.columns;
+
+  const environmentWidth = Number(process.env.COLUMNS);
+  return Number.isSafeInteger(environmentWidth) && environmentWidth > 0
+    ? environmentWidth
+    : 120;
+}
+
+/**
+ * Column-aligned table that fits `maximumWidth`. Flexible columns shrink first
+ * (down to their header width), then the widest remaining column.
+ */
+export function formatTable(
+  headers: string[],
+  rows: string[][],
+  options: {flexibleColumns?: readonly number[]; maximumWidth?: number} = {},
+): string {
+  const maximumWidth = Math.max(1, options.maximumWidth ?? outputWidth());
+  const gap = "  ";
+  const widths = headers.map((header, index) =>
+    Math.max(
+      Bun.stringWidth(header),
+      ...rows.map((row) => Bun.stringWidth(row[index] ?? "")),
+    ),
+  );
+  const headerWidths = headers.map((header) => Bun.stringWidth(header));
+  let tableWidth = gap.length * (headers.length - 1);
+  for (const width of widths) tableWidth += width;
+
+  const widestShrinkable = (candidates: readonly number[], floor: number[]) => {
+    let widest: number | undefined;
+    for (const index of candidates) {
+      if (widths[index]! <= floor[index]!) continue;
+      if (widest === undefined || widths[index]! > widths[widest]!)
+        widest = index;
+    }
+    return widest;
+  };
+
+  while (tableWidth > maximumWidth) {
+    const column =
+      widestShrinkable(options.flexibleColumns ?? [], headerWidths) ??
+      widestShrinkable(
+        widths.map((_width, index) => index),
+        widths.map(() => 1),
+      );
+    if (column === undefined) break;
+    widths[column]!--;
+    tableWidth--;
+  }
+
+  const line = (cells: string[]) =>
+    cells
+      .map((cell, index) => truncateToWidth(cell, widths[index]!, true))
+      .join(gap)
+      .trimEnd();
+
+  return [
+    line(headers),
+    widths.map((width) => "-".repeat(width)).join(gap),
+    ...rows.map(line),
+  ].join("\n");
+}
+
+// ── Structured Output ─────────────────────────────────────────────────
+
+export function printJson(value: unknown): void {
+  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+export function formatFrontmatter(
+  fields: Record<string, string | null>,
+): string {
+  return [
+    "---",
+    ...Object.entries(fields).map(
+      ([name, value]) => `${name}: ${JSON.stringify(value)}`,
+    ),
+    "---",
+  ].join("\n");
+}
+
+function serializeAttributes(
+  attributes: Record<string, boolean | number | string | null>,
+): string {
+  return Object.entries(attributes)
+    .filter(([, value]) => value !== null)
+    .map(([name, value]) => {
+      const escaped = String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+      return `${name}="${escaped}"`;
+    })
+    .join(" ");
+}
+
+function formatBlock(
+  tag: string,
+  attributes: Record<string, boolean | number | string | null>,
+  text: string,
+): string {
+  return `<${tag} ${serializeAttributes(attributes)}>\n${text}\n</${tag}>`;
+}
+
+export function formatMessage(
+  event: MessageEvent,
+  flags: Record<string, boolean> = {},
+): string {
+  return formatBlock(
+    event.role,
+    {
+      entry: event.ref,
+      time: event.timestamp,
+      subagent: event.subagent ?? null,
+      workflow: event.workflow?.runId ?? null,
+      ...flags,
+    },
+    event.text,
+  );
+}
+
+export function formatEvent(event: SessionEvent): string {
+  switch (event.kind) {
+    case "message": {
+      return formatMessage(event);
+    }
+    case "compaction": {
+      return formatBlock(
+        "compaction",
+        {entry: event.ref, time: event.timestamp},
+        event.text,
+      );
+    }
+    case "extra": {
+      return formatBlock(
+        "extra",
+        {entry: event.ref, time: event.timestamp, name: event.name},
+        event.text,
+      );
+    }
+    case "tool": {
+      const attributes = serializeAttributes({
+        entry: event.ref,
+        time: event.timestamp,
+        name: event.name,
+        subagent: event.subagent ?? null,
+        workflow: event.workflow?.runId ?? null,
+        error: event.result?.error === true ? true : null,
+      });
+      return `<tool ${attributes}>${event.preview}</tool>`;
+    }
+  }
+}
+
+export function formatEventDetail(event: SessionEvent): string {
+  if (event.kind !== "tool") return formatEvent(event);
+
+  const attributes = serializeAttributes({
+    entry: event.ref,
+    time: event.timestamp,
+    name: event.name,
+    callId: event.callId,
+    subagent: event.subagent ?? null,
+    workflow: event.workflow?.runId ?? null,
+    error: event.result?.error === true ? true : null,
+  });
+  return [
+    `<tool ${attributes}>`,
+    "<input>",
+    JSON.stringify(event.input, null, 2),
+    "</input>",
+    "<result>",
+    event.result === null
+      ? "(no result recorded)"
+      : event.result.text || "(empty)",
+    "</result>",
+    "</tool>",
+  ].join("\n");
+}
