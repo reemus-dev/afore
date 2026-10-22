@@ -1,6 +1,6 @@
 {
   "name": "@reemus/afore",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Find, outline, read and search Claude Code sessions from the terminal",
   "keywords": [
     "agents",
