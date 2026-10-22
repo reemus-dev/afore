@@ -18,7 +18,7 @@
     "url": "git+https://github.com/reemus-dev/afore.git"
   },
   "bin": {
-    "afore": "./src/index.ts"
+    "afore": "src/index.ts"
   },
   "files": [
     "src"
