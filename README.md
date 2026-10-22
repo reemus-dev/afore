@@ -33,13 +33,13 @@ need to recover earlier work. It is not a memory system or an index.
 > `afore` requires [Bun](https://bun.sh/) 1.3.7 or later.
 
 ```sh
-bun add -g afore
+bun add -g @reemus/afore
 ```
 
 Or run it without installing:
 
 ```sh
-bunx afore sessions
+bunx @reemus/afore sessions
 ```
 
 Shell completion is available for bash, zsh, fish and PowerShell:

@@ -1,5 +1,5 @@
 {
-  "name": "afore",
+  "name": "@reemus/afore",
   "version": "0.1.0",
   "description": "Find, outline, read and search Claude Code sessions from the terminal",
   "keywords": [
@@ -24,6 +24,9 @@
     "src"
   ],
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.288",
     "@anthropic-ai/sdk": "0.131.0",
