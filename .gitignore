@@ -4,6 +4,9 @@ node_modules/
 # build output
 dist/
 
+# local maintainer notes
+/TODO.md
+
 # mise local overrides
 .mise.local.toml
 .mise.*.local.toml
