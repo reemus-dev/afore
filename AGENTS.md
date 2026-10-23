@@ -1,6 +1,6 @@
-# afore
+# agses
 
-`afore` is a Bun CLI that finds, outlines, reads and searches persisted Claude
+`agses` is a Bun CLI that finds, outlines, reads and searches persisted Claude
 Code sessions. It publishes its TypeScript source to npm and runs it with Bun
 1.3.7 or later.
 
@@ -24,13 +24,13 @@ Read `README.md` for the user contract.
 - Read only. Never write to the Claude Code config directory.
 - Resolve the config directory from `CLAUDE_CONFIG_DIR`, as Claude Code and the
   Agent SDK do, and fall back to `~/.claude`.
-- The Agent SDK lists sessions and selects a thread's branch. `afore` hands it
+- The Agent SDK lists sessions and selects a thread's branch. `agses` hands it
   relinked entries through an in-memory session store, so the thread spans every
   compaction. A session continued in a new transcript reads the old transcript
   first.
 - `#N` refs number every event, extras included, so a ref holds with or without
   `--extra`.
-- Only `tokens` uses the network. It requires `AFORE_ANTHROPIC_API_KEY` or, as a
+- Only `tokens` uses the network. It requires `AGSES_ANTHROPIC_API_KEY` or, as a
   fallback, `ANTHROPIC_API_KEY`.
 
 ## Development

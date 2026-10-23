@@ -48,10 +48,10 @@ export const tokensCommand = defineCommand({
       }
 
       const apiKey =
-        process.env.AFORE_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+        process.env.AGSES_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         throw new CliFailure(
-          "Set AFORE_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY to count tokens.",
+          "Set AGSES_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY to count tokens.",
         );
       }
       const client = new Anthropic({apiKey});

@@ -25,23 +25,23 @@ const USAGE_GUIDE = `---
 ## Find sessions
 
 \`\`\`sh
-afore projects
-afore sessions --project /path/to/project
-afore sessions --all --limit 20
-afore search "query" --project /path/to/project
-afore search "query" --all --context 1
+agses projects
+agses sessions --project /path/to/project
+agses sessions --all --limit 20
+agses search "query" --project /path/to/project
+agses search "query" --all --context 1
 \`\`\`
 
 ## Inspect a session
 
 \`\`\`sh
-afore outline SESSION --last 40
-afore read SESSION --entry 20
-afore read SESSION --no-tools --tokens 80000
-afore outline SESSION --subagent SUBAGENT_ID
-afore read SESSION --subagent SUBAGENT_ID --entry 12
-afore workflows SESSION
-afore workflows SESSION --run RUN_ID
+agses outline SESSION --last 40
+agses read SESSION --entry 20
+agses read SESSION --no-tools --tokens 80000
+agses outline SESSION --subagent SUBAGENT_ID
+agses read SESSION --subagent SUBAGENT_ID --entry 12
+agses workflows SESSION
+agses workflows SESSION --run RUN_ID
 \`\`\`
 
 ## Selection rules
@@ -57,7 +57,7 @@ afore workflows SESSION --run RUN_ID
 - Outline \`#N\` references number every event, including the attachment, meta, and system entries that only \`--extra\` shows. Inspect one in full with \`read --entry N\`.
 - Add \`--format json\` for structured output.
 
-> Run \`afore <command> --help\` for every option.`;
+> Run \`agses <command> --help\` for every option.`;
 
 const rawArgs = process.argv.length === 2 ? ["--help"] : process.argv.slice(2);
 
@@ -74,7 +74,7 @@ async function showUsage<T extends ArgsDef = ArgsDef>(
 
 const app = defineCommand({
   meta: {
-    name: "afore",
+    name: "agses",
     description: "Discover, inspect, and search Claude Code sessions.",
   },
   subCommands: {

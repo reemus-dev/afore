@@ -375,7 +375,7 @@ export async function readThread(
       throw new CliFailure(
         linked?.workflow === undefined
           ? `Session entry #${ref} does not name a subagent.`
-          : `Session entry #${ref} names workflow run ${linked.workflow.runId}. List its agents with \`afore workflows --run ${ref}\`.`,
+          : `Session entry #${ref} names workflow run ${linked.workflow.runId}. List its agents with \`agses workflows --run ${ref}\`.`,
       );
     }
     subagent = resolveSubagent(subagents, linked.subagent);

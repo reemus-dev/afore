@@ -1,6 +1,6 @@
-# afore
+# agses
 
-[![CI](https://github.com/reemus-dev/afore/actions/workflows/ci.yml/badge.svg)](https://github.com/reemus-dev/afore/actions/workflows/ci.yml)
+[![CI](https://github.com/reemus-dev/agses/actions/workflows/ci.yml/badge.svg)](https://github.com/reemus-dev/agses/actions/workflows/ci.yml)
 
 Find, outline, read and search Claude Code sessions from your terminal.
 
@@ -11,7 +11,7 @@ Find, outline, read and search Claude Code sessions from your terminal.
 - Search message text across one project or all of them
 - Get JSON output from every session command
 
-`afore` reads the full transcripts that Claude Code already saves, exactly as
+`agses` reads the full transcripts that Claude Code already saves, exactly as
 recorded, with no index to build or keep current. It is made for agents that
 need to recover earlier work. It is not a memory system or an index.
 
@@ -30,44 +30,44 @@ need to recover earlier work. It is not a memory system or an index.
 
 <!-- prettier-ignore -->
 > [!NOTE]
-> `afore` requires [Bun](https://bun.sh/) 1.3.7 or later.
+> `agses` requires [Bun](https://bun.sh/) 1.3.7 or later.
 
 ```sh
-bun add -g @reemus/afore
+bun add -g agses
 ```
 
 Or run it without installing:
 
 ```sh
-bunx @reemus/afore sessions
+bunx agses sessions
 ```
 
 Shell completion is available for bash, zsh, fish and PowerShell:
 
 ```sh
-source <(afore complete bash)
+source <(agses complete bash)
 ```
 
 ## Usage
 
 ```sh
-afore projects
-afore sessions [--project PATH_OR_QUERY | --all] [--limit N]
-afore outline [SESSION] [--subagent ID] [--first N | --last N] [--no-tools] [--extra]
-afore read [SESSION] [--subagent ID] [--role user|assistant|both] [--no-tools] [--extra] [--first N | --last N] [--entry N] [--tokens N]
-afore search QUERY [--project PATH_OR_QUERY | --all] [--role user|assistant|both] [--subagents] [--context N] [--regex] [--case-sensitive]
-afore workflows [SESSION] [--run ID|REF]
-afore tokens [FILE] [--model opus|sonnet|haiku|ID]
+agses projects
+agses sessions [--project PATH_OR_QUERY | --all] [--limit N]
+agses outline [SESSION] [--subagent ID] [--first N | --last N] [--no-tools] [--extra]
+agses read [SESSION] [--subagent ID] [--role user|assistant|both] [--no-tools] [--extra] [--first N | --last N] [--entry N] [--tokens N]
+agses search QUERY [--project PATH_OR_QUERY | --all] [--role user|assistant|both] [--subagents] [--context N] [--regex] [--case-sensitive]
+agses workflows [SESSION] [--run ID|REF]
+agses tokens [FILE] [--model opus|sonnet|haiku|ID]
 ```
 
 A typical recovery starts with an outline, then reads the events that matter:
 
 ```sh
-afore sessions --all --limit 20                # find the session
-afore outline SESSION --last 40                # numbered events, newest last
-afore read SESSION --entry 20                  # one event in full
-afore read SESSION --no-tools --tokens 80000   # recent conversation within a token budget
-afore search "query" --all --context 1         # matches with one message either side
+agses sessions --all --limit 20                # find the session
+agses outline SESSION --last 40                # numbered events, newest last
+agses read SESSION --entry 20                  # one event in full
+agses read SESSION --no-tools --tokens 80000   # recent conversation within a token budget
+agses search "query" --all --context 1         # matches with one message either side
 ```
 
 - Every session command accepts `--format text|json`.
@@ -75,13 +75,13 @@ afore search "query" --all --context 1         # matches with one message either
   system entries that only `--extra` shows. A ref is the same with or without
   `--extra`. Pass it to `read --entry N`.
 - `tokens` counts the tokens in a file, or stdin, for a model.
-- Run `afore --help` for the guide, and `afore <command> --help` for every
+- Run `agses --help` for the guide, and `agses <command> --help` for every
   option.
 
 ### Session selection
 
 Projects are the working directories that sessions recorded. `--project` takes
-an exact path or a unique substring. Without it, `afore` uses the closest
+an exact path or a unique substring. Without it, `agses` uses the closest
 project that contains the current directory.
 
 `SESSION` resolves within that project, in this order:
@@ -110,11 +110,11 @@ Outline rows that spawn, message or report back from a subagent show
 `@SUBAGENT_ID`. Workflow calls and their task notifications show `@wf_RUN_ID`.
 
 ```sh
-afore outline SESSION --subagent SUBAGENT_ID
-afore read SESSION --subagent SUBAGENT_ID --entry 12
-afore search "query" --subagents
-afore workflows SESSION
-afore workflows SESSION --run RUN_ID
+agses outline SESSION --subagent SUBAGENT_ID
+agses read SESSION --subagent SUBAGENT_ID --entry 12
+agses search "query" --subagents
+agses workflows SESSION
+agses workflows SESSION --run RUN_ID
 ```
 
 - `--subagent` takes the id, a unique prefix (`@` optional), or the ref of a row
@@ -125,11 +125,11 @@ afore workflows SESSION --run RUN_ID
 
 ## How it works
 
-`afore` reads `$CLAUDE_CONFIG_DIR/projects`, or `~/.claude/projects` when
+`agses` reads `$CLAUDE_CONFIG_DIR/projects`, or `~/.claude/projects` when
 `CLAUDE_CONFIG_DIR` is not set. It never starts a model session.
 
 Session lists and metadata come from the Claude Agent SDK (`listSessions`, and
-`getSessionInfo` for continued sessions). For events, `afore` reads the
+`getSessionInfo` for continued sessions). For events, `agses` reads the
 transcript JSONL and hands it to `getSessionMessages` through an in-memory
 session store. It re-parents each compaction boundary onto the history before
 it, so the SDK's branch selection resolves the whole main thread instead of
@@ -137,7 +137,7 @@ stopping at the last compaction.
 
 Resuming a compacted session can continue it in a new transcript. The new
 transcript repeats the compaction, and the old one ends with a `continued-in`
-entry that names the new session. `afore` reads the old history first, so the
+entry that names the new session. `agses` reads the old history first, so the
 new session's thread, subagents and workflow runs still span every compaction.
 
 - **Projects** are the recorded session working directories (`cwd`). A session
@@ -167,11 +167,11 @@ new session's thread, subagents and workflow runs still span every compaction.
 
 ## Privacy
 
-- `afore` is read-only. It never writes to the Claude Code config directory.
+- `agses` is read-only. It never writes to the Claude Code config directory.
 - Everything runs locally, except `tokens`. It sends its input to Anthropic's
-  token-counting API and needs `AFORE_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY`,
+  token-counting API and needs `AGSES_ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY`,
   in that order. Claude Code can use `ANTHROPIC_API_KEY` in place of your
-  subscription login, so export `AFORE_ANTHROPIC_API_KEY` to make the key
+  subscription login, so export `AGSES_ANTHROPIC_API_KEY` to make the key
   available in every shell.
 
 ## Development

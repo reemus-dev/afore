@@ -1,5 +1,5 @@
 {
-  "name": "@reemus/afore",
+  "name": "agses",
   "version": "0.1.2",
   "description": "Find, outline, read and search Claude Code sessions from the terminal",
   "keywords": [
@@ -9,16 +9,16 @@
     "sessions",
     "transcripts"
   ],
-  "homepage": "https://github.com/reemus-dev/afore#readme",
-  "bugs": "https://github.com/reemus-dev/afore/issues",
+  "homepage": "https://github.com/reemus-dev/agses#readme",
+  "bugs": "https://github.com/reemus-dev/agses/issues",
   "license": "MIT",
   "author": "Reemus Pty Ltd",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/reemus-dev/afore.git"
+    "url": "git+https://github.com/reemus-dev/agses.git"
   },
   "bin": {
-    "afore": "src/index.ts"
+    "agses": "src/index.ts"
   },
   "files": [
     "src"
