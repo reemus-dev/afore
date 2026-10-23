@@ -2,7 +2,11 @@ import {existsSync} from "node:fs";
 import path from "node:path";
 import {CliFailure} from "./cli.js";
 import type {SessionEvent, WorkflowLaunch} from "./events.js";
-import type {SessionRecord, SubagentRecord} from "./sessions.js";
+import {
+  type SessionRecord,
+  sessionTranscripts,
+  type SubagentRecord,
+} from "./sessions.js";
 
 /** Run statuses after which no agent of the run is still working */
 const SETTLED_STATUSES = new Set(["completed", "failed", "killed"]);
@@ -62,7 +66,8 @@ export type WorkflowRun = {
  * `workflows/<runId>.json`, written when a launch settles, and a journal and
  * agent transcripts under `subagents/workflows/<runId>/`, written as it runs. A
  * resume reuses the run under a new launch, so a snapshot may describe an
- * earlier launch than the latest.
+ * earlier launch than the latest. A run's files sit under the session that
+ * launched it, which may be one this session continues.
  */
 export async function readWorkflowRuns(
   session: SessionRecord,
@@ -91,21 +96,29 @@ export async function readWorkflowRuns(
     }
   }
 
-  const runIds = new Set(launchesByRun.keys());
-  if (existsSync(directory)) {
-    const glob = (pattern: string) => new Bun.Glob(pattern).scan(directory);
+  const runDirectories = new Map<string, string>();
+  // Newest first, so a run whose files several sessions hold reads the latest
+  for (const owner of sessionTranscripts(session).toReversed()) {
+    const ownerDirectory = path.join(path.dirname(owner.transcript), owner.id);
+    if (!existsSync(ownerDirectory)) continue;
+    const glob = (pattern: string) =>
+      new Bun.Glob(pattern).scan(ownerDirectory);
+    const found = (runId: string) => {
+      if (!runDirectories.has(runId)) runDirectories.set(runId, ownerDirectory);
+    };
     for await (const match of glob("workflows/wf_*.json")) {
-      runIds.add(path.basename(match, ".json"));
+      found(path.basename(match, ".json"));
     }
     for await (const match of glob("subagents/workflows/*/journal.jsonl")) {
-      runIds.add(path.basename(path.dirname(match)));
+      found(path.basename(path.dirname(match)));
     }
   }
+  const runIds = new Set([...launchesByRun.keys(), ...runDirectories.keys()]);
 
   const runs = await Promise.all(
     [...runIds].map((runId) =>
       readRun(
-        directory,
+        runDirectories.get(runId) ?? directory,
         runId,
         launchesByRun.get(runId) ?? [],
         reportedByRun.get(runId),

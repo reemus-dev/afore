@@ -94,6 +94,9 @@ project that contains the current directory.
 4. An exact title, case-insensitive.
 5. An unambiguous UUID prefix.
 
+A session continued in a new transcript is not listed. Its path, Hex ID, UUID or
+UUID prefix still selects it.
+
 Without `--project`, a `SESSION` with no match in the current directory's
 project, or given outside any project, resolves across all projects by the same
 rules. An ambiguous match across projects fails and lists each candidate's
@@ -125,11 +128,17 @@ afore workflows SESSION --run RUN_ID
 `afore` reads `$CLAUDE_CONFIG_DIR/projects`, or `~/.claude/projects` when
 `CLAUDE_CONFIG_DIR` is not set. It never starts a model session.
 
-Session lists and metadata come from the Claude Agent SDK (`listSessions`). For
-events, `afore` reads the transcript JSONL and hands it to `getSessionMessages`
-through an in-memory session store. It re-parents each compaction boundary onto
-the history before it, so the SDK's branch selection resolves the whole main
-thread instead of stopping at the last compaction.
+Session lists and metadata come from the Claude Agent SDK (`listSessions`, and
+`getSessionInfo` for continued sessions). For events, `afore` reads the
+transcript JSONL and hands it to `getSessionMessages` through an in-memory
+session store. It re-parents each compaction boundary onto the history before
+it, so the SDK's branch selection resolves the whole main thread instead of
+stopping at the last compaction.
+
+Resuming a compacted session can continue it in a new transcript. The new
+transcript repeats the compaction, and the old one ends with a `continued-in`
+entry that names the new session. `afore` reads the old history first, so the
+new session's thread, subagents and workflow runs still span every compaction.
 
 - **Projects** are the recorded session working directories (`cwd`). A session
   started in a git worktree belongs to the worktree path.

@@ -3,6 +3,7 @@ import {existsSync} from "node:fs";
 import {homedir} from "node:os";
 import path from "node:path";
 import {
+  getSessionInfo,
   getSessionMessages,
   getSubagentMessages,
   listSessions,
@@ -17,6 +18,8 @@ import {
 } from "./events.js";
 
 const HEX_ID_LENGTH = 14;
+/** How much of a transcript's end to search for its `continued-in` entry */
+const TAIL_BYTES = 65_536;
 
 export type SessionRecord = {
   id: string;
@@ -29,6 +32,11 @@ export type SessionRecord = {
   firstPrompt: string | null;
   /** Absolute path to the session's JSONL file */
   transcript: string | null;
+  /**
+   * Sessions this one continues from transcripts that hold its earlier history,
+   * oldest first
+   */
+  continues: Array<{id: string; transcript: string}>;
 };
 
 export type SubagentRecord = {
@@ -47,6 +55,8 @@ export type SubagentRecord = {
 export type ProjectRecord = {
   project: string;
   sessions: SessionRecord[];
+  /** Sessions continued in a new transcript, which lists leave out */
+  continued: SessionRecord[];
 };
 
 // ── Discovery ─────────────────────────────────────────────────────────
@@ -60,19 +70,52 @@ export async function discoverProjects(): Promise<ProjectRecord[]> {
     listSessions(),
     findTranscripts(),
   ]);
-  const byProject = new Map<string, SessionRecord[]>();
+  const continuations = await findContinuations(transcripts);
+  const listed = new Set(infos.map(({sessionId}) => sessionId));
+  // The SDK lists only the session continuing them
+  const continuedInfos = await Promise.all(
+    [...new Set(continuations.values())]
+      .filter((id) => !listed.has(id))
+      .map((id) => getSessionInfo(id)),
+  );
+
+  const record = (info: SDKSessionInfo, project: string): SessionRecord => {
+    const continues: SessionRecord["continues"] = [];
+    for (
+      let id = continuations.get(info.sessionId);
+      id !== undefined && !continues.some((session) => session.id === id);
+      id = continuations.get(id)
+    ) {
+      const transcript = transcripts.get(id);
+      if (transcript === undefined) break;
+      continues.unshift({id, transcript});
+    }
+    return sessionRecord(
+      info,
+      project,
+      transcripts.get(info.sessionId) ?? null,
+      continues,
+    );
+  };
+  const byProject = new Map<string, ProjectRecord>();
   for (const info of infos) {
     if (!info.cwd) continue;
-    const sessions = byProject.get(info.cwd) ?? [];
-    sessions.push(
-      sessionRecord(info, info.cwd, transcripts.get(info.sessionId) ?? null),
-    );
-    byProject.set(info.cwd, sessions);
+    const project = byProject.get(info.cwd) ?? {
+      project: info.cwd,
+      sessions: [],
+      continued: [],
+    };
+    project.sessions.push(record(info, info.cwd));
+    byProject.set(info.cwd, project);
+  }
+  for (const info of continuedInfos) {
+    if (info?.cwd)
+      byProject.get(info.cwd)?.continued.push(record(info, info.cwd));
   }
 
-  return [...byProject].map(([project, sessions]) => ({
-    project,
-    sessions: sessions.toSorted((left, right) =>
+  return [...byProject.values()].map((project) => ({
+    ...project,
+    sessions: project.sessions.toSorted((left, right) =>
       right.lastActivity.localeCompare(left.lastActivity),
     ),
   }));
@@ -105,10 +148,41 @@ async function findTranscripts(): Promise<Map<string, string>> {
   return transcripts;
 }
 
+/**
+ * Continuing session UUID → UUID of the session it continues. Resuming a
+ * compacted session can move it to a new transcript that repeats the
+ * compaction. The old transcript then ends with a `continued-in` entry naming
+ * the new session. Like the SDK, search only the tail, so a link is missed if
+ * the old session ran on long after it.
+ */
+async function findContinuations(
+  transcripts: Map<string, string>,
+): Promise<Map<string, string>> {
+  const continuations = new Map<string, string>();
+  await Promise.all(
+    [...transcripts].map(async ([id, transcript]) => {
+      const file = Bun.file(transcript);
+      const start = Math.max(0, file.size - TAIL_BYTES);
+      const lines = (await file.slice(start).text()).split("\n");
+      // A cut first line is not JSON
+      const entry = lines
+        .slice(start > 0 ? 1 : 0)
+        .findLast((line) => line.includes('"type":"continued-in"'));
+      if (entry === undefined) return;
+      const {continuedInSessionId} = JSON.parse(entry) as TranscriptEntry;
+      if (typeof continuedInSessionId === "string") {
+        continuations.set(continuedInSessionId, id);
+      }
+    }),
+  );
+  return continuations;
+}
+
 function sessionRecord(
   info: SDKSessionInfo,
   project: string,
   transcript: string | null,
+  continues: SessionRecord["continues"],
 ): SessionRecord {
   return {
     id: info.sessionId,
@@ -126,52 +200,98 @@ function sessionRecord(
     size: info.fileSize ?? null,
     firstPrompt: info.firstPrompt ?? null,
     transcript,
+    continues,
   };
 }
 
 /**
- * Subagents spawned anywhere in the session, nested ones and workflow agents
- * included. Each keeps one transcript across every continuation, beside a
- * `.meta.json` naming the Agent call that spawned it or its workflow phase.
- * Workflow agents live under `workflows/<runId>/`.
+ * The session's transcript after those of the sessions it continues, oldest
+ * first; none without a transcript
+ */
+export function sessionTranscripts(
+  session: SessionRecord,
+): Array<{id: string; transcript: string}> {
+  if (session.transcript === null) return [];
+  return [
+    ...session.continues,
+    {id: session.id, transcript: session.transcript},
+  ];
+}
+
+/**
+ * Subagents spawned anywhere in the session or the sessions it continues,
+ * nested ones and workflow agents included. Each keeps one transcript across
+ * every continuation, beside a `.meta.json` naming the Agent call that spawned
+ * it or its workflow phase. Workflow agents live under `workflows/<runId>/`.
  */
 export async function readSubagents(
   session: SessionRecord,
 ): Promise<SubagentRecord[]> {
-  if (session.transcript === null) return [];
-  const directory = path.join(
-    path.dirname(session.transcript),
-    session.id,
-    "subagents",
-  );
-  if (!existsSync(directory)) return [];
-
   const subagents: SubagentRecord[] = [];
-  for await (const match of new Bun.Glob("**/agent-*.jsonl").scan(directory)) {
-    const transcript = path.join(directory, match);
-    const metaFile = Bun.file(transcript.replace(/\.jsonl$/, ".meta.json"));
-    const meta = (
-      (await metaFile.exists()) ? await metaFile.json() : {}
-    ) as Record<string, unknown>;
-    const field = (key: string) =>
-      typeof meta[key] === "string" ? meta[key] : null;
-    subagents.push({
-      id: path.basename(match, ".jsonl").slice("agent-".length),
-      agentType: field("agentType"),
-      description: field("description"),
-      toolUseId: field("toolUseId"),
-      runId: /^workflows\/([^/]+)\//.exec(match)?.[1] ?? null,
-      phase: field("workflowPhase"),
-      transcript,
-    });
+  for (const owner of sessionTranscripts(session)) {
+    const directory = path.join(
+      path.dirname(owner.transcript),
+      owner.id,
+      "subagents",
+    );
+    if (!existsSync(directory)) continue;
+    for await (const match of new Bun.Glob("**/agent-*.jsonl").scan(
+      directory,
+    )) {
+      const transcript = path.join(directory, match);
+      const metaFile = Bun.file(transcript.replace(/\.jsonl$/, ".meta.json"));
+      const meta = (
+        (await metaFile.exists()) ? await metaFile.json() : {}
+      ) as Record<string, unknown>;
+      const field = (key: string) =>
+        typeof meta[key] === "string" ? meta[key] : null;
+      subagents.push({
+        id: path.basename(match, ".jsonl").slice("agent-".length),
+        agentType: field("agentType"),
+        description: field("description"),
+        toolUseId: field("toolUseId"),
+        runId: /^workflows\/([^/]+)\//.exec(match)?.[1] ?? null,
+        phase: field("workflowPhase"),
+        transcript,
+      });
+    }
   }
   return subagents;
 }
 
-async function readEntries(transcript: string): Promise<TranscriptEntry[]> {
-  return relinkCompactions(
-    Bun.JSONL.parse(await Bun.file(transcript).bytes()) as TranscriptEntry[],
-  );
+async function readTranscript(transcript: string): Promise<TranscriptEntry[]> {
+  return Bun.JSONL.parse(
+    await Bun.file(transcript).bytes(),
+  ) as TranscriptEntry[];
+}
+
+/**
+ * The session's entries after those of the sessions it continues, each up to
+ * where it moved. A new transcript repeats entries from the compaction it moved
+ * at, which keep their place in the old transcript.
+ */
+async function readSessionEntries(
+  session: SessionRecord,
+): Promise<TranscriptEntry[]> {
+  if (session.transcript === null) {
+    throw new CliFailure(`No transcript file found for session ${session.id}.`);
+  }
+  let entries: TranscriptEntry[] = [];
+  for (const {id, transcript} of sessionTranscripts(session)) {
+    const move = entries.findIndex(
+      (entry) =>
+        entry.type === "continued-in" && entry.continuedInSessionId === id,
+    );
+    const earlier = move === -1 ? entries : entries.slice(0, move);
+    const repeated = new Set(earlier.map(({uuid}) => uuid));
+    entries = [
+      ...earlier,
+      ...(await readTranscript(transcript)).filter(
+        ({uuid}) => uuid === undefined || !repeated.has(uuid),
+      ),
+    ];
+  }
+  return entries;
 }
 
 /** Every event on the session's main thread, across compactions */
@@ -179,10 +299,7 @@ export async function readSessionEvents(
   session: SessionRecord,
   subagents: SubagentRecord[],
 ): Promise<SessionEvent[]> {
-  if (session.transcript === null) {
-    throw new CliFailure(`No transcript file found for session ${session.id}.`);
-  }
-  const entries = await readEntries(session.transcript);
+  const entries = relinkCompactions(await readSessionEntries(session));
   // Loading through a store hands the SDK the relinked entries to resolve
   const thread = await getSessionMessages(session.id, {
     includeSystemMessages: true,
@@ -204,7 +321,7 @@ export async function readSubagentEvents(
   subagents: SubagentRecord[],
   subagent: SubagentRecord,
 ): Promise<SessionEvent[]> {
-  const entries = await readEntries(subagent.transcript);
+  const entries = relinkCompactions(await readTranscript(subagent.transcript));
   const thread = await getSubagentMessages(session.id, subagent.id, {
     sessionStore: {
       append: () => Promise.resolve(),
@@ -330,13 +447,19 @@ export function resolveProject(
 /**
  * The session `identifier` names in the projects: a 14-char Hex ID (no
  * fallback), an exact UUID, an exact title, then a unique UUID prefix.
- * Ambiguous candidates name their project when several were searched.
+ * Continued sessions match all but the title, which they share with the session
+ * continuing them. Ambiguous candidates name their project when several were
+ * searched.
  */
 function matchSession(
   projects: ProjectRecord[],
   identifier: string,
 ): SessionRecord | undefined {
-  const sessions = sessionsOf(projects);
+  const listed = sessionsOf(projects);
+  const sessions = [
+    ...listed,
+    ...projects.flatMap((project) => project.continued),
+  ];
   const needle = identifier.toLowerCase();
   const pick = (
     matches: SessionRecord[],
@@ -364,7 +487,7 @@ function matchSession(
   return (
     sessions.find((s) => s.id === needle) ??
     pick(
-      sessions.filter((s) => s.title.toLowerCase() === needle),
+      listed.filter((s) => s.title.toLowerCase() === needle),
       "title",
     ) ??
     pick(
@@ -389,7 +512,7 @@ export async function resolveSession(
   if (identifier?.toLowerCase().endsWith(".jsonl")) {
     const id = path.basename(identifier, ".jsonl");
     const session = projects
-      .flatMap((project) => project.sessions)
+      .flatMap((project) => [...project.sessions, ...project.continued])
       .find((s) => s.id === id);
     if (!session)
       throw new CliFailure(`No Claude Code session found for "${identifier}".`);

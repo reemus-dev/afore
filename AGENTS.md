@@ -26,7 +26,8 @@ Read `README.md` for the user contract.
   Agent SDK do, and fall back to `~/.claude`.
 - The Agent SDK lists sessions and selects a thread's branch. `afore` hands it
   relinked entries through an in-memory session store, so the thread spans every
-  compaction.
+  compaction. A session continued in a new transcript reads the old transcript
+  first.
 - `#N` refs number every event, extras included, so a ref holds with or without
   `--extra`.
 - Only `tokens` uses the network. It requires `AFORE_ANTHROPIC_API_KEY` or, as a
