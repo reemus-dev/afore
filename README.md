@@ -33,13 +33,13 @@ need to recover earlier work. It is not a memory system or an index.
 > `agses` requires [Bun](https://bun.sh/) 1.3.7 or later.
 
 ```sh
-bun add -g agses
+bun add -g agses-cli
 ```
 
 Or run it without installing:
 
 ```sh
-bunx agses sessions
+bunx agses-cli sessions
 ```
 
 Shell completion is available for bash, zsh, fish and PowerShell:
