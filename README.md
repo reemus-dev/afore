@@ -76,7 +76,7 @@ agses search "query" --all --context 1         # matches with one message either
   `--extra`. Pass it to `read --entry N`.
 - `tokens` counts the tokens in a file, or stdin, for a model.
 - Run `agses --help` for the guide, and `agses <command> --help` for every
-  option.
+  option. `agses --version` prints the installed version.
 
 ### Session selection
 

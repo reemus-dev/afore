@@ -10,6 +10,7 @@ import {
   runMain,
 } from "citty";
 import tab from "@bomb.sh/tab/citty";
+import packageJson from "../package.json" with {type: "json"};
 import {outlineCommand} from "./commands/outline.js";
 import {projectsCommand} from "./commands/projects.js";
 import {readCommand} from "./commands/read.js";
@@ -75,6 +76,7 @@ async function showUsage<T extends ArgsDef = ArgsDef>(
 const app = defineCommand({
   meta: {
     name: "agses",
+    version: packageJson.version,
     description: "Discover, inspect, and search Claude Code sessions.",
   },
   subCommands: {
