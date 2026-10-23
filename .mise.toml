@@ -39,3 +39,11 @@ run = ["oxlint --fix", { task = "format" }]
 [tasks.format]
 description = "Format repository files"
 run = "oxfmt"
+
+# ── Release ─────────────────────────────────────────────────────────────────
+
+# The pushed tag starts release.yml, which publishes to npm
+[tasks.release]
+description = "Bump the version, commit and tag it, then push to release"
+usage = 'arg "<bump>" help="patch, minor, major or an exact version"'
+run = 'npm version "$usage_bump" -m "Release %s" && git push --follow-tags'

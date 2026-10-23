@@ -43,3 +43,7 @@ mise run check
 ```
 
 Run from source with `bun src/index.ts <command>`.
+
+Release with `mise run release patch` (or `minor`, `major`, an exact version).
+It sets the version in `package.json`, commits, tags and pushes. The tag starts
+`release.yml`, which publishes to npm. Do not edit the version or tag by hand.
