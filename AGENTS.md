@@ -12,7 +12,8 @@ Read `README.md` for the user contract.
 | -------------------------- | ----------------------------------------------------------- |
 | `src/index.ts`             | Entry, command tree, usage guide and shell completion       |
 | `src/commands/`            | One citty command per file, parsing and output              |
-| `src/modules/sessions.ts`  | Discovery, session and subagent resolution, transcript I/O  |
+| `src/modules/discovery.ts` | Listing sessions and grouping them into projects            |
+| `src/modules/sessions.ts`  | Session and subagent resolution, transcript I/O             |
 | `src/modules/events.ts`    | Projecting a thread's entries into numbered events          |
 | `src/modules/previews.ts`  | One-line previews of tool calls                             |
 | `src/modules/workflows.ts` | Workflow runs from Workflow calls, journals and snapshots   |

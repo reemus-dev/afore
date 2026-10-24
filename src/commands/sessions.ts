@@ -5,6 +5,7 @@ import {
   runSafely,
   validateArguments,
 } from "../modules/cli.js";
+import {discoverProjects, sessionsOf} from "../modules/discovery.js";
 import {
   formatDateTime,
   formatPreview,
@@ -13,11 +14,7 @@ import {
   outputWidth,
   printJson,
 } from "../modules/format.js";
-import {
-  discoverProjects,
-  resolveProject,
-  sessionsOf,
-} from "../modules/sessions.js";
+import {resolveProject} from "../modules/sessions.js";
 
 export const sessionsCommand = defineCommand({
   meta: {

@@ -1,5 +1,6 @@
 import {defineCommand} from "citty";
 import {runSafely, validateArguments} from "../modules/cli.js";
+import type {SessionRecord} from "../modules/discovery.js";
 import {
   formatFrontmatter,
   formatPreview,
@@ -13,7 +14,6 @@ import {
   readSubagents,
   resolveSession,
   sessionFrontmatter,
-  type SessionRecord,
 } from "../modules/sessions.js";
 import {
   readWorkflowRuns,

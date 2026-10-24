@@ -1,5 +1,10 @@
 import {defineCommand} from "citty";
 import {CliFailure, runSafely, validateArguments} from "../modules/cli.js";
+import {
+  discoverProjects,
+  type SessionRecord,
+  sessionsOf,
+} from "../modules/discovery.js";
 import type {MessageEvent, SessionEvent} from "../modules/events.js";
 import {
   formatFrontmatter,
@@ -7,14 +12,11 @@ import {
   printJson,
 } from "../modules/format.js";
 import {
-  discoverProjects,
   readSessionEvents,
   readSubagentEvents,
   readSubagents,
   resolveProject,
   sessionFrontmatter,
-  type SessionRecord,
-  sessionsOf,
   type SubagentRecord,
 } from "../modules/sessions.js";
 

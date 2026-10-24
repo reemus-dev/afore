@@ -1,12 +1,9 @@
 import {existsSync} from "node:fs";
 import path from "node:path";
 import {CliFailure} from "./cli.js";
+import type {SessionRecord} from "./discovery.js";
 import type {SessionEvent, WorkflowLaunch} from "./events.js";
-import {
-  type SessionRecord,
-  sessionTranscripts,
-  type SubagentRecord,
-} from "./sessions.js";
+import {sessionTranscripts, type SubagentRecord} from "./sessions.js";
 
 /** Run statuses after which no agent of the run is still working */
 const SETTLED_STATUSES = new Set(["completed", "failed", "killed"]);

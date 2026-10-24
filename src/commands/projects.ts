@@ -1,5 +1,6 @@
 import {defineCommand} from "citty";
 import {runSafely, validateArguments} from "../modules/cli.js";
+import {discoverProjects} from "../modules/discovery.js";
 import {
   formatDate,
   formatDateTime,
@@ -8,7 +9,6 @@ import {
   outputWidth,
   printJson,
 } from "../modules/format.js";
-import {discoverProjects} from "../modules/sessions.js";
 
 export const projectsCommand = defineCommand({
   meta: {
